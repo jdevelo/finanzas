@@ -7,17 +7,16 @@
 */
 
 var finanzasPersonales = angular.module("appFinanzas",['ngAnimate'])
-.factory('finanzas',function ($http) {
-	var finanzas = [];
+.service('finanzas',function ($http) {
 
 	var writeUrl = '/finanzas/db/write.php';
 	var readUrl = '/finanzas/db/read.php';
 	var deleteUrl = '/finanzas/db/delete.php';
 
-	finanzas.key = 'finanzasAPP';
+	this.key = 'finanzasAPP';
 
 	/*GLOBAL FUNCTIONS*/
-	finanzas.getAll = function (table) {
+	this.getAll = function (table) {
 		return $http.get(readUrl+"?read="+table)
 			.then( function (response) {
 				return response.data;
@@ -27,7 +26,7 @@ var finanzasPersonales = angular.module("appFinanzas",['ngAnimate'])
 		);
 	}
 
-	finanzas.add = function (data,obj) {
+	this.add = function (data,obj) {
 		return $http.post(writeUrl+"?add="+data,obj)
 		.then(function (response) {
 			console.log(response.data);
@@ -37,7 +36,7 @@ var finanzasPersonales = angular.module("appFinanzas",['ngAnimate'])
 		})
 	}
 
-	finanzas.delete = function (obj) {
+	this.delete = function (obj) {
 		$http.post(deleteUrl+"?delete=",obj)
 		.then(function (response) {
 			return response.data
@@ -46,8 +45,6 @@ var finanzasPersonales = angular.module("appFinanzas",['ngAnimate'])
 		})
 	}
 
-
-	return finanzas;
 });
 
 
