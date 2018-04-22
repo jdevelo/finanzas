@@ -11,7 +11,7 @@
 
  ?>
 
-<div ng-app="appFinanzas">
+<div ng-app="appFinanzas" ng-cloak>
 	
     <div class="container" ng-controller="finanzasController">
 
