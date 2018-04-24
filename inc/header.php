@@ -34,4 +34,7 @@
     <!-- Angular Framework -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.7/angular.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular-animate.js"></script>
+    <script src="https://code.angularjs.org/1.6.9/angular-route.min.js"></script>
+    <script src="https://code.angularjs.org/1.6.9/angular-resource.min.js"></script>
+    <script src="//code.jquery.com/jquery-latest.min.js"></script>
   </head>

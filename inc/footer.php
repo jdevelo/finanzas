@@ -5,6 +5,7 @@
     <script>window.jQuery || document.write('<script src=".<?php echo ASSETS; ?>js/jquery-slim.min.js"><\/script>')</script>
     <script src="<?php echo ASSETS; ?>js/angular-local-storage.min.js"></script>
     <script src="<?php echo ASSETS; ?>js/myApp.js"></script>
+    <script src="<?php echo ASSETS; ?>js/services.js"></script>
     <script src="<?php echo ASSETS; ?>js/myCtrl.js"></script>
     <script src="<?php echo ASSETS; ?>js/popper.min.js"></script>
     <script src="<?php echo ASSETS; ?>js/bootstrap.min.js"></script>
