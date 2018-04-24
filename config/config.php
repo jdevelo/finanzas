@@ -1,13 +1,11 @@
 <?php 
 
-	
 	/*******************-Conexión a Base de Datos-********************/
 
 	define("nombre_servidor","localhost");
 	define("usuario","root");
 	define("clave","");
 	define("base_datos","finanzas");
-
 	/*******************-Conexión a Base de Datos-********************/
 
 

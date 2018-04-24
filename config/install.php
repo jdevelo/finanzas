@@ -44,6 +44,7 @@
 
 		Table::addColumn('deudas','primer_pago','DATE','dia_pago');
 		Table::addColumn('cargos_fijos','primer_pago','DATE','mora');
+		Table::addColumn('pagos','n_cuota','SMALLINT(3)','id_deuda');
 
 		Table::addColumn('deudas_balance','ultimo_mes_pagado','CHAR(10)','saldo');
 		Table::addColumn('deudas_balance','mora','INT(10) DEFAULT 0','saldo');
