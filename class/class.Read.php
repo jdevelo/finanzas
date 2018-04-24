@@ -1,7 +1,5 @@
 <?php 
 
-
-
 /**
 * 
 */
@@ -31,7 +29,7 @@ class Read
 		$mes_actual = date("Y-m").'-1';
 		$args =  array(
 			'where' => 'mes = ?',
-			'where_values' => $mes_actual 
+			'where_values' => [$mes_actual]  
 		);
 
 		$cMoney = CRUD::all('balance_general',$args);
@@ -86,18 +84,7 @@ class Read
 		$debts = CRUD::all('deudas',$args);
 		return json_encode($debts);
 	}
-
-	static public function fixed_charges($columns="*",$order=null)
-	{	
-		$args = array(
-			'columns' => $columns, 
-			'where' => 'tm_delete IS NULL',
-			'order' => $order
-		);
-		$fixed = CRUD::all('cargos_fijos',$args);
-		return json_encode($fixed);
-	}
-
+	
 	static public function debtsResume()
 	{		
 		$join = [
@@ -121,6 +108,20 @@ class Read
 
 	}
 
+	static public function fixed_charges($columns="*",$order=null)
+	{		
+		$this_month = date('Y-m');
+		$args = array(
+			'columns' => $columns, 
+			'where' => 'tm_delete IS NULL && ( ultimo_mes_pagado IS NULL || ultimo_mes_pagado < ? || mora > ? )',
+			'where_values' => [$this_month,0],
+			'order' => $order
+		);
+		$fixed = CRUD::all('cargos_fijos',$args);
+		return json_encode($fixed);
+	}
+
+
 	static public function nextDebts()
 	{	
 		$this_month = date('Y-m');
@@ -131,39 +132,28 @@ class Read
 			['INNER','deudas_balance','deudas_balance.id_deuda = deudas.id_deuda']
 		];
 		$args = array(
-			// 'columns' => 'deudas.id_deuda, deudas.concepto, deudas.primer_pago',
+			'columns' => 'deudas.id_deuda, deudas.concepto, deudas.primer_pago, deudas_balance.mora',
 			'where' => 'deudas_balance.saldo > ? && (deudas_balance.ultimo_mes_pagado <> ? || deudas_balance.ultimo_mes_pagado IS NULL || deudas_balance.mora > ?)', 
 			'where_values' => [0,$this_month,0],
 			'join' => $join
 		);
 		$actual_debts = CRUD::all('deudas',$args);
 
-		foreach ($actual_debts as $value) {
-			$value->mes_primer_pago = substr($value->primer_pago, 0, 7);
-			if ($value->mora > 0) {
-				if ($value->ultimo_mes_pagado === $this_month) {
-					
-				}
+		foreach ($actual_debts as $kDebt => $debt) {
+			$fecha = substr($debt->primer_pago,0,7);
+			if ($fecha > date('Y-m')) {
+				unset($actual_debts[$kDebt]);
 			}
 		}
-
-		var_dump($actual_debts);
 
 		// Cargos fijos
-		$fixed = (object) json_decode(self::fixed_charges('id_cargo_fijo, primer_pago, concepto'),true);
+		$fixed = json_decode(self::fixed_charges('id_cargo_fijo, primer_pago, concepto, mora'),true);
 
-		var_dump($fixed);
-
-		$pending_fc = [];
-		foreach ($fixed as $charge) {		
-			$charge['valor_pagar'] = self::fixed_payment($charge['id_cargo_fijo']);
-
-			if ($charge['valor_pagar'] > 0) {
-				$pending_fc[] = $charge;
-			}
+		foreach ($fixed as $key => $charge) {		
+			$fixed[$key]['valor_pagar'] = self::fixed_payment($charge['id_cargo_fijo']);
 		}
 
-		$result = array_merge($actual_debts,$pending_fc);
+		$result = array_merge($actual_debts,$fixed);
 
 		foreach ($result as $rsKey => $rsVal) {
 			$result[$rsKey] = (object) $rsVal;
@@ -172,23 +162,52 @@ class Read
 		foreach ($result as $rsKey => $rsVal) {
 			if (isset($rsVal->id_deuda)) {
 				$result[$rsKey]->valor_pagar = self::actualPayment($rsVal->id_deuda);
+				$id['id_deuda'] = $rsVal->id_deuda;
 			}elseif (isset($rsVal->id_cargo_fijo)) {
+
 				$result[$rsKey]->valor_pagar = Read::fixed_payment($rsVal->id_cargo_fijo);
+				$id['id_cargo_fijo'] = $rsVal->id_cargo_fijo;
 			}
-			$result[$rsKey]->fecha_pago = $this_month.'-'.$rsVal->dia_pago;
+			$result[$rsKey]->fecha_pago = self::fechaPago($rsVal->primer_pago);
 		}
 
 		return json_encode($result);
 
 	}
 
+	/*Rerturn the payment-date*/
+	static public function fechaPago($primer_pago)
+	{	
+		if (is_null($primer_pago)) {
+			$primer_pago = date('Y-m-t');
+		}
+		$this_month = date('Y-m');
+		$dia_pago = substr($primer_pago,8,2);
+
+		$fecha_pago = date("Y-m-").$dia_pago;
+
+		$valores = explode('-', $fecha_pago);
+
+		if (!checkdate($valores[1], $valores[2], $valores[0])) {
+			do {
+				$valores[2]--;
+				$valores[2] = (string) $valores[2];
+			} while ( !checkdate( $valores[1], $valores[2], $valores[0] ) );
+		}
+
+		return implode("-", $valores);
+			
+	}
 
 	/*Return all the info of a specific Debt*/
 	static public function rDebt($id_deuda)
 	{	
 		$args = array(
-			'where' => 'id_deuda = ?', 
+			'where' => 'deudas.id_deuda = ?', 
 			'where_values' => [$id_deuda], 
+			'join' => [ 
+					['INNER', 'deudas_balance','deudas_balance.id_deuda = deudas.id_deuda']
+				]
 		);
 		$s_debt = CRUD::all('deudas',$args);
 		return $s_debt[0];
@@ -196,35 +215,64 @@ class Read
 
 	static public function paymentsDebt($id_deuda) /*Pagos hechos a la deuda*/
 	{	
+		$debt = self::rDebt($id_deuda);
+		$total_debt = $debt->valor; /*Total de la deuda adquirida*/
+
 		$args = array(
 			'where' => 'id_deuda = ?',
 			'where_values' => [$id_deuda]
 		);
-		return CRUD::all('pagos',$args);
+
+		$payments = CRUD::all('pagos',$args);
+
+		$payments_today = 0;	
+		if ( count($payments) > 0 ) {
+			foreach ( $payments as $payment ) {
+				$payments_today = $payments_today + $payment->abono_capital;
+			}
+		}
+
+		return $payments_today;
 	}
 
 	// Retorna la actual cuota (Abono a capital)
 	static public function actualDebt($id_deuda)
 	{	
-		$debt = self::rDebt($id_deuda);
-		$total_debt = $debt->valor; /*Total de la deuda adquirida*/
+		$args = array(
+			'columns' => 'deudas.primer_pago, deudas.cuotas, deudas.valor, deudas_balance.ultimo_mes_pagado',
+			'where' => 'deudas.id_deuda = ?',
+			'where_values' => [$id_deuda],
+			'join' => [['INNER', 'deudas_balance','deudas_balance.id_deuda = deudas.id_deuda']]
+		);
+		$d = CRUD::all('deudas',$args);
+		$deuda = $d[0];
 
-		$s_payments = self::paymentsDebt($id_deuda);
-		$payments_today = 0;	
-		if ( count($s_payments) > 0 ) {
-			foreach ( $s_payments as $payment ) {
-				$payments_today = $payments_today + $payment->abono_capital;
-			}
+		if ($deuda->ultimo_mes_pagado >= date('Y-m')) {
+			return 0;
 		}
 
-		return $total_debt - $payments_today;
+		$primerPago = new DateTime($deuda->primer_pago);
+		$this_month = new DateTime( date("Y-m") );
+		$diferencia = $primerPago->diff($this_month);
+		$n_cuota = ( $diferencia->y * 12 ) + $diferencia->m;
+
+		$c_faltantes = $deuda->cuotas - $n_cuota;
+
+		$s_payments = self::paymentsDebt($id_deuda);
+		
+		$s_pend = $deuda->valor - $s_payments;
+
+		return $s_pend / $c_faltantes;
 	}
 
 	/*Return the actual interest of the debt*/
 	static public function interesDebt($id_deuda)
-	{
+	{	
+		if (self::actualDebt($id_deuda) == 0) {
+			return 0;
+		}
 		$debt = self::rDebt($id_deuda);
-		$actual_debt = self::actualDebt($id_deuda);
+		$actual_debt = self::paymentsDebt($id_deuda) - $debt->valor;
 		return ($actual_debt * $debt->tasa) / 100;
 	}
 
@@ -239,60 +287,41 @@ class Read
 			'where_values' => [$id_deuda] 
 		);
 
-		foreach (CRUD::all('deudas_balance',$args) as $key) {
+		$deuda = CRUD::all('deudas_balance',$args);
 
-			$mora = 0;
-			if ($key->mora > 0) {
-				$mora = $key->mora;
-			}
-
-			if (is_null($key->ultimo_mes_pagado)) {
-				$months_tp = 1;
-			}else {
-				$lastPayM = new DateTime($key->ultimo_mes_pagado);
-		        $this_month = new DateTime( date("Y-m") );
-		        $diferencia = $lastPayM->diff($this_month);
-		        $months_tp = ( $diferencia->y * 12 ) + $diferencia->m;
-			}
-
+		if ( !is_null($deuda[0]->ultimo_mes_pagado) && $deuda[0]->ultimo_mes_pagado >= date('Y-m') ) 
+		{	
+			return $deuda[0]->mora;
+		}else{
+			return self::actualDebt($id_deuda) + self::interesDebt($id_deuda) + $deuda[0]->mora;
 		}
-
-		$debt_date = new DateTime($debt->fecha);
-		$today = new DateTime( date("Y-m-d H:i:s") );
-
-		$diferencia = $debt_date->diff($today);
-		// El método diff nos devuelve un objeto del tipo DateInterval,
-		// que almacena la información sobre la diferencia de tiempo 
-		// entre fechas (años, meses, días, etc.).
-
-		$meses = ( $diferencia->y * 12 ) + $diferencia->m; /*Meses en los que he pagado*/
-
-		$months_term = $debt->cuotas - $meses; /*Meses restantes para pago*/
-
-		$base_pay = self::actualDebt($id_deuda) / $months_term; /*Abono a capital del presente mes*/
-
-		return ($base_pay + $interes) * $months_tp + $mora;
 	}
 
-
+	// return the fixed payment to this month
 	static public function fixed_payment($id_cargo_fijo)
 	{	
 		$args = array(
-			'columns' => 'valor, ultimo_mes_pagado', 
+			'columns' => 'valor, ultimo_mes_pagado, mora', 
 			'where' => 'id_cargo_fijo = ?', 
 			'where_values' => [$id_cargo_fijo], 
 		);
 		$cargo_fijo = CRUD::all('cargos_fijos',$args);
 
+		$mora = 0;
+		if ($cargo_fijo[0]->mora > 0) {
+			$mora = $cargo_fijo[0]->mora;
+		}
+
 		$months_tp = 1;
-		if (!is_null($cargo_fijo[0]->ultimo_mes_pagado)) {
+		if ( !is_null($cargo_fijo[0]->ultimo_mes_pagado )) {
 			$lastPayM = new DateTime($cargo_fijo[0]->ultimo_mes_pagado);
 			$this_month = new DateTime( date("Y-m") );
 			$diferencia = $lastPayM->diff($this_month);
 		    $months_tp = ( $diferencia->y * 12 ) + $diferencia->m;
 		}
 
-		return $cargo_fijo[0]->valor * $months_tp;
+		$valorPagar = ($cargo_fijo[0]->valor * $months_tp) + $mora;
+		return $valorPagar;
 	}
 	
 }

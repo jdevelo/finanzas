@@ -1,7 +1,9 @@
 <?php 
+
 	require 'config/config.php'; 
+  
 	$title = 'Log In';
-	require DIRECTORIO_ROOT.'inc/header.php'; 
+	require DIRECTORIO_ROOT.'inc/header.php';
 
   if (isset($_GET['ac']) && $_GET['ac'] === 'l') {
       var_dump($_POST);

@@ -68,15 +68,9 @@ class Write
 	// Agregar cargos fijos
 	static public function addFixedCharges($data)
 	{			
-		$month = date('m');		
-		if ($month > 1) {
-			$last_month = $month - 1;
-			$last_month_p = date('Y-').$last_month;
-		}elseif ($month == 1) {
-			$last_year = date('Y') - 1;
-			$last_month_p = $last_year.'-12';
-		}
-		$data['ultimo_mes_pagado'] = $last_month_p;
+		$date=date_create($data['primer_pago']);
+		$data['primer_pago'] = date_format($date,"Y-m-d");
+
 		$newFixedCharge = CRUD::insert('cargos_fijos',$data);
 		$args = array(
 			'where' => 'id_cargo_fijo = ?',
@@ -96,14 +90,43 @@ class Write
 			$whv = [$data['id_deuda']];
 			CRUD::update('deudas_balance',['ultimo_mes_pagado' => date('Y-m')],$wh,$whv);		
 		}elseif ( isset($data['id_cargo_fijo']) ) {
+
+			$args = array(
+				'columns' => 'valor, ultimo_mes_pagado, mora', 
+				'where' => 'id_cargo_fijo = ?', 
+				'where_values' => [$data['id_cargo_fijo']], 
+			);
+			$cargo_fijo = CRUD::all('cargos_fijos',$args);
+
+			if ( $cargo_fijo[0]->mora > 0 ) {
+				if ( $cargo_fijo[0]->mora <= $data['pago_total'] ) {
+					$update['mora'] = 0;
+				}else{
+					$update['mora'] = $cargo_fijo[0]->mora - $data['pago_total'];
+					$end = true;
+				}
+				$data['pago_total'] = $data['pago_total'] - $cargo_fijo[0]->mora;
+				var_dump($data['pago_total']);
+				CRUD::update('cargos_fijos',$update,'id_cargo_fijo = ?',[$data['id_cargo_fijo']]);	
+			}
+
+			if ( isset( $end ) && $end ) {
+				return Read::nextDebts();
+			}
+
+			if ( $data['pago_total'] < Read::fixed_payment($data['id_cargo_fijo']) ) {
+				$update['mora'] = (Read::fixed_payment($data['id_cargo_fijo']) - $data['pago_total']) + $update['mora'];
+				CRUD::update('cargos_fijos',$update,'id_cargo_fijo = ?',[$data['id_cargo_fijo']]);
+			}
+
 			$data['abono_capital'] = $data['pago_total'];
 			CRUD::insert('pagos',$data);
 			$wh = 'id_cargo_fijo = ?';
 			$whv = [$data['id_cargo_fijo']];
-			CRUD::update('cargos_fijos',['ultimo_mes_pagado' => date('Y-m')],$wh,$whv);
+
+			$update2 = ['ultimo_mes_pagado' => date('Y-m')];
+			CRUD::update('cargos_fijos',$update2,$wh,$whv);
 			self::balanceSheet(['egresos' => $data['pago_total']]);
-		}else{
-			return false;
 		}
 		return Read::nextDebts();
 	}
@@ -118,33 +141,54 @@ class Write
 	/*Insert new debt Payment*/
 	static public function loanPayment($data=[])
 	{	
-		$data['pago_intereses'] = Read::interesDebt($data['id_deuda']);
-		$data['abono_capital'] = $data['pago_total'] - $data['pago_intereses'];
-		CRUD::insert('pagos',$data);
-		
-		self::balanceSheet( [ 
-				'egresos' => $data['pago_total'],
-		 ] );
+		$deuda = Read::rDebt($data['id_deuda']);
+		$saldo = true;
 
-		$args = array(
-			'where' => 'id_deuda = ?', 
-			'where_values' => [$data['id_deuda']]
-		);
-		$deudasB = CRUD::all('deudas_balance',$args);
-
-		$update['abonos_capital'] = $deudasB[0]->abonos_capital + $data['abono_capital'];
-		$update['interes_pagado'] = $deudasB[0]->interes_pagado + $data['pago_intereses'];
-		$update['cuotas_pagas'] = $deudasB[0]->cuotas_pagas + 1; 
-		$update['saldo'] = $deudasB[0]->saldo - $data['abono_capital']; 
-
-		if ( $data['pago_total'] < Read::actualPayment($data['id_deuda']) ) {
-			$update['mora'] =  Read::actualPayment($data['id_deuda']) - $data['pago_total'];
+		if ($deuda->mora > 0) {
+			if ( $data['pago_total'] > $deuda->mora ) {
+				$pago_mora = $deuda->mora;
+				$data['pago_total'] = $data['pago_total'] - $deuda->mora;
+				$saldo = true;
+			}else{
+				$pago_mora = $data['pago_total'];
+				$saldo = false;
+			}
+			self::balanceSheet( [ 
+				'egresos' => $pago_mora,
+			] );
+			$updateMora['mora'] = $deuda->mora - $pago_mora;
+			CRUD::update('deudas_balance',$updateMora,'id_deuda = ?',[$data['id_deuda']]);
 		}
-		/*ERROR: Se debe modificar el metodo para calcular las cuotas transcurridas*/
 
-		CRUD::update('deudas_balance',$update,'id_deuda = ?',[$data['id_deuda']]);
+		if ($saldo) {
+			$valorPagar = Read::actualPayment($data['id_deuda']);
+			$data['pago_intereses'] = Read::interesDebt($data['id_deuda']);
+			$data['abono_capital'] = $data['pago_total'] - $data['pago_intereses'];
+			CRUD::insert('pagos',$data);
+			
+			self::balanceSheet( [ 
+					'egresos' => $data['pago_total'],
+			] );
 
-		
+			$args = array(
+				'where' => 'id_deuda = ?', 
+				'where_values' => [$data['id_deuda']]
+			);
+			$deudasB = CRUD::all('deudas_balance',$args);
+
+			$update['abonos_capital'] = $deudasB[0]->abonos_capital + $data['abono_capital'];
+			$update['interes_pagado'] = $deudasB[0]->interes_pagado + $data['pago_intereses'];
+			$update['cuotas_pagas'] = $deudasB[0]->cuotas_pagas + 1; 
+			$update['saldo'] = $deudasB[0]->saldo - $data['abono_capital']; 
+
+			if ( $data['pago_total'] < $valorPagar ) {
+				$update['mora'] = $valorPagar - $data['pago_total'];
+				$update['saldo'] = $update['saldo'] - $update['mora'];
+			}
+			/*ERROR: Se debe modificar el metodo para calcular las cuotas transcurridas*/
+
+			CRUD::update('deudas_balance',$update,'id_deuda = ?',[$data['id_deuda']]);
+		}		
 	}
 
 	// Ingresar Gastos diarios

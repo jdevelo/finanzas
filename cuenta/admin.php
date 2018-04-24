@@ -5,15 +5,15 @@
 <?php 
 	
  //  var_dump(json_decode(Read::income()));
-
-  Read::nextDebts();
+  // var_dump( Read::fechaPago('2018-11-31'));
+  // var_dump(json_decode(Read::nextDebts()));
 
 
  ?>
 
 <div ng-app="appFinanzas" ng-cloak>
 	
-    <div class="container" ng-controller="finanzasController">
+    <div class="container" ng-controller="MainController">
 
       <h4 class="text-center">
         Dinero Actual: $ <?php echo number_format( Read::currentMoney() ); ?>
@@ -103,7 +103,7 @@
           <h5>Cargos Fijos</h5>
           Concepto: <input type="text" ng-model="newFixedCharge.concepto">
           Valor: <input type="text" ng-model="newFixedCharge.valor">
-          Día Pago<input type="text" ng-model="newFixedCharge.dia_pago">
+          Primer pago<input type="date" ng-model="newFixedCharge.primer_pago">
           <input type="submit" value="Agregar Cargo Fijo">
         </form>
         <!-- #Cargos Fijos -->
@@ -166,14 +166,14 @@
         		</tr>
         	</thead>
         	<tbody>
-        		<tr ng-repeat="next in nextDebts">
+        		<tr ng-repeat="next in nextDebts | orderBy: 'fecha_pago'">
         			<td>{{next.concepto}}</td>
         			<td>{{next.valor_pagar | currency : $ : 0}}</td>
-        			<td>{{ }}</td>
+        			<td>{{next.fecha_pago}}</td>
         		</tr>
         	</tbody>
         </table>
-        {{nextDebts}}
+
         <!-- Pagar Deuda -->
         <h4>Pagar</h4>
         <form ng-submit="addDebtPayment()">
