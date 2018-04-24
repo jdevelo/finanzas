@@ -1,4 +1,4 @@
-finanzasPersonales.controller('finanzasController',['$scope','finanzas', function ($scope,finanzas) {
+finanzasPersonales.controller('MainController',['$scope','finanzas', function ($scope,finanzas) {
 	
 
 	/*Get Data*/
@@ -98,6 +98,7 @@ finanzasPersonales.controller('finanzasController',['$scope','finanzas', functio
 		$scope.addDebt = function () {
 			finanzas.add('debt',$scope.newDebt)
 			.then(function (data, status) {
+				console.log(data);
 				$scope.debts.unshift(data);
 				$scope.newDebt = {};
 				getData('nextDebts');
@@ -135,7 +136,6 @@ finanzasPersonales.controller('finanzasController',['$scope','finanzas', functio
 		$scope.addDebtPayment = function () {
 			finanzas.add('debt_payment',$scope.newDebtPayment)
 			.then(function (data, status) {
-				console.log(data);
 				$scope.newDebtPayment = {};
 				getData('nextDebts');
 			})
