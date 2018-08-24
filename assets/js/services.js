@@ -10,6 +10,7 @@ finanzasPersonales.service('finanzas',function ($http,localStorageService) {
 	this.getAll = function (table) {
 		return $http.get(readUrl+"?read="+table)
 			.then( function (response) {
+				console.log(response.data);
 				return response.data;
 			}, function (response) {
 				console.log(response.data);

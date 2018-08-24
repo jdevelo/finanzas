@@ -2,7 +2,7 @@
 	require 'config.php';
 
 	/*Create DataBase (Only for LOCALHOST)*/
-	// Table::createBD('finanzas');	
+	Table::createBD('finanzas');	
 	/* #Database */
 
 /* =======================================================

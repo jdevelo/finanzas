@@ -132,64 +132,6 @@
 			return false;
 		}
 
-		public static function agregarEnVistos($productoID)
-		{
-            $data = [
-            		[
-            		'id_producto' => $productoID,
-            		'date_ls_vistos' => date("Y-m-d H:i:s")
-            		]
-            	];
-
-            return self::insertInCookie('rce_vis',$data,258000,'id_producto');
-		}
-
-		static $_productos_vistos = [];
-		public static function productosVistos($productoID = 0,$limit=10)
-		{	
-			if (isset($_COOKIE['rce_vis'])) {
-				$aCarrito = unserialize($_COOKIE['rce_vis']);
-                shuffle($aCarrito);
-
-               	$contar = 0;
-                foreach ($aCarrito as $key => $value) {
-                	if ( $value['id_producto'] != $productoID AND $contar < $limit ) {
-                        $where = 'productos.id_producto = ? AND productos_publicados.estado_publicado = ?';
-                        $params = array("is",$value['id_producto'],"SI");
-                        $join = [
-                        	['INNER','productos_cantidad','productos_cantidad.id_producto = productos.id_producto'],
-                        	['INNER','productos_imagenes_principales','productos_imagenes_principales.id_producto = productos.id_producto'],
-			            	['INNER','categorias','categorias.id_categoria = productos.id_categoria'],
-			            	['INNER','categorias_sub','categorias_sub.id_sub_categoria = productos.id_sub_categoria'],
-                        	['INNER','productos_publicados','productos_publicados.serie = productos.serie']
-                        ];
-                        $productos_vistos = CRUD::find('productos','*',$where,$params,$join);
-
-					    while ($pms = $productos_vistos[1]->fetch_assoc()) {
-
-				          	$datoDescuento = self::buscarDescuento($pms['id_producto'],$pms['precio']);
-
-				          	self::$_productos_vistos[$contar] = array(
-				                'id_producto' =>  $pms['id_producto'],
-				                'serie' =>  $pms['serie'],
-				                'nombre_producto' =>  $pms['nombre_producto'],
-				                'categoria' => $pms['categoria'],
-				                'sub-categoria' => $pms['nombre_sub_categoria'],
-				                'vendidos' => $pms['cantidad_salida'],
-				                'ruta_img_frontal' =>  $pms['ruta_img_frontal'],
-				                'precioAntesDescuento' => $pms['precio'],
-				                'porcentajeDescuento' => $datoDescuento['porcentaje'],
-				                'descuentoPorProducto' => $datoDescuento['valorDescuento'],
-				                'precio' => $datoDescuento['precio_final'] 
-				          	);
-				          	$contar++;
-				    	}    
-                	}
-                }/*foreach*/
-                return self::$_productos_vistos;
-			}                    
-		}
-
 	}
 
 

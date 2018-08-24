@@ -45,7 +45,7 @@ class Read
 			'limit' => 10
 		);
 		$income = CRUD::all('ingresos',$args);
-		return json_encode($income);
+		return json_encode($income, true);
 	}
 
 

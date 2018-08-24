@@ -10,7 +10,7 @@
 		
 		static public function createBD($database)
 		{
-			/*Crear BD*/
+			/*Create a DataBase (Only for localhost)*/
 			$bd = 'CREATE DATABASE '.$database;
 			$enlace = new mysqli("localhost","root","");
 
@@ -19,8 +19,7 @@
 			}else{
 				echo "Ya existe la base de datos ".$database.'. No se requiere ninguna acción.';
 			}
-			echo "<br>";
-			echo "<br>";
+			echo "<br><br>";
 		}
 		
 		static public function create( $tb )

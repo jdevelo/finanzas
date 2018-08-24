@@ -7,6 +7,7 @@
  //  var_dump(json_decode(Read::income()));
   // var_dump( Read::fechaPago('2018-11-31'));
   // var_dump(json_decode(Read::nextDebts()));
+  // var_dump(json_decode(Read::fixed_charges()));
 
 
  ?>
@@ -19,6 +20,7 @@
         Dinero Actual: $ <?php echo number_format( Read::currentMoney() ); ?>
       </h4>
 
+
     	<!-- Ingresos -->
     	<hr>
     	<h3>Nuevo Ingreso</h3>
@@ -27,7 +29,8 @@
           Concepto: <input type="text" ng-model="newEntry.concepto">
           Valor: $ <input type="number" ng-model="newEntry.valor" min="1000">
           <input type="hidden" ng-model="newEntry.empt_val">
-          <input type="submit" value="Agregar ingreso">
+          <input type="submit" ng-mouseover="prueba = true" ng-mouseout="prueba = false" ng-class="{'hover': prueba}" value="Agregar ingreso">
+          <span ng-show="prueba"><--Agregar</span>
         </form>
         <br>
         
@@ -44,7 +47,7 @@
         		<tr ng-repeat="entry in income track by $index">
         			<td>{{entry.concepto}}</td>
         			<td>{{entry.valor | currency : $ }}</td>
-        			<td>{{entry.fecha | date: 'mediumDate'}}</td>
+        			<td>{{entry.fecha | date: 'myDateFormat'}}</td>
         		</tr>
         	</tbody>
         </table>
