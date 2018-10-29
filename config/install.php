@@ -2,7 +2,7 @@
 	require 'config.php';
 
 	/*Create DataBase (Only for LOCALHOST)*/
-	Table::createBD('finanzas');	
+	// Table::createBD('finanzas');	
 	/* #Database */
 
 /* =======================================================
@@ -160,7 +160,7 @@
 				'name' => 'ahorro',
 				'cols' => [
 						['id_ahorro','SMALLINT(5)',true,false,false,true,true,''],
-						['id_tipo','TINYINT(3)',true,true,false,false,false,''],
+						['id_tipo','SMALLINT(5)',true,true,false,false,false,''],
 						['valor','MEDIUMINT(8)',true,true,true,false,false,''],
 						['fecha','DATETIME',false,false,false,false,false,'CURRENT_TIMESTAMP'],
 						['tm_delete','DATETIME',false,false,false,false,false,'']
@@ -192,6 +192,27 @@
 			];
 
 			$table[] = [
+				'name' => 'deudas',
+				'cols' => [
+					['id_deuda','INT(11)',true,false,false,true,true,''],
+					['id_acreedor','INT(11)',true,true,false,false,false,''],
+					['id_concepto','SMALLINT(7)',true,true,false,false,false,''],
+					['detalle_concepto','VARCHAR(100)',false,true,false,false,false,''],
+					['valor','INT(10)',true,true,false,false,false,''],
+					['tasa','FLOAT',true,false,false,false,false,''],
+					['cuotas','TINYINT(3)',true,true,false,false,false,''],
+					['dia_pago','TINYINT(2)',true,true,false,false,false,''],
+					['id_estado_deuda','INT(11)',true,true,false,false,false,1],
+					['fecha','DATETIME',false,true,false,false,false,'CURRENT_TIMESTAMP'],
+			        ['tm_delete','DATETIME',false,false,false,false,false,'']
+				],
+		    	'foreign' => [
+		    			['id_acreedor','acreedores(id_acreedor)'],
+		    			['id_estado_deuda','estados_deuda(id_estado_deuda)'],
+		    		],
+			];
+
+			$table[] = [
 				'name' => 'deudas_balance',
 				'cols' => [
 					['id_deuda_balance','INT(11)',true,false,false,true,true,''],
@@ -207,26 +228,6 @@
 		    		],
 			];
 
-			$table[] = [
-				'name' => 'deudas',
-				'cols' => [
-					['id_deuda','INT(11)',true,false,false,true,true,''],
-					['id_acreedor','INT(11)',true,true,false,false,false,''],
-					['id_concepto','SMALLINT(7)',true,true,false,false,false,''],
-					['detalle_concepto','VARCHAR(100)',false,true,false,false,false,''],
-					['valor','INT(10)',true,true,false,false,false,''],
-					['tasa','FLOAT',true,false,false,false,false,''],
-					['cuotas','TINYINT(3)',true,true,false,false,false,''],
-					['dia_pago','TINYINT(2)',true,true,false,false,false,''],
-					['id_estado_deuda','TINYINT(2)',false,true,false,false,false,1],
-					['fecha','DATETIME',false,true,false,false,false,'CURRENT_TIMESTAMP'],
-			        ['tm_delete','DATETIME',false,false,false,false,false,'']
-				],
-		    	'foreign' => [
-		    			['id_acreedor','acreedores(id_acreedor)'],
-		    			['id_estado_deuda','estados_deuda(id_estado_deuda)'],
-		    		],
-			];
 
 
 			$table[] = [
@@ -236,7 +237,7 @@
 					['concepto','VARCHAR(100)',false,true,false,false,false,''],
 					['valor','INT(10)',true,true,false,false,false,''],
 			        ['dia_pago','TINYINT(2)',true,false,false,false,false,''],
-					['id_estado_deuda','TINYINT(2)',false,true,false,false,false,'1'],
+					['id_estado_deuda','INT(11)',true,true,false,false,false,'1'],
 			        ['tm_delete','DATETIME',false,false,false,false,false,'']
 				],
 		    	'foreign' => [

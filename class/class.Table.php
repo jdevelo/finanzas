@@ -105,7 +105,7 @@
 					$estado = 'OK';
 				}
 			} 
-			// echo $sql;
+			// echo $sql; 
 			echo "<table style='width:50%; min-width: 200px; margin: 0 auto; border: 1px solid grey;'>
 			  <tr>
 			    <td>$tableName</td>
